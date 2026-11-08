@@ -1,3 +1,7 @@
+# Naive Bayes Language Detector
+
+A raw Java implementation of a Naive Bayes classifier used for language detection.
+
 This repository contains a custom, from-scratch implementation of a Naive Bayes text classifier in Java, configured as a Language Detector. Built entirely without external machine learning libraries, this project demonstrates core natural language processing (NLP) and probability concepts under the hood.
 
 Naive Bayes outperforms heavier, more complex neural networks for short texts, mostly because languages give themselves away so easily through high-frequency "stop words" (like the, el, le, der).
@@ -21,3 +25,9 @@ We do not just strip out everything that isn't standard a-z, we will accidentall
 Instead, we use the Unicode regex [^\p{L}\s]. '\p{L}' matches a letter from any language, and '\s' matches whitespace. We will tell Java to replace anything that isn't those two things with an empty string.
 
 A raw Java implementation of a Naive Bayes classifier used for language detection.
+
+Key Features:
+Zero Dependencies: Built using only standard Java libraries.
+Mathematical Stability: Uses logarithmic probabilities to prevent floating-point underflow.
+Laplace Smoothing: Gracefully handles unknown words encountered during testing.
+Unicode Tokenization: Accurately processes language-specific characters (like é, ñ, ü) using Regex \p{L}.
