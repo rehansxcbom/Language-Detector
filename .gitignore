@@ -1,16 +1,16 @@
 # Compiled class file
 *.class
 
-# Log file
-*.log
+# Eclipse jdk
+.classpath
+.project
+.settings/
 
-# BlueJ files
-*.ctxt
+# Maven / Build Output
+target/
+build/
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
+# Package Files
 *.jar
 *.war
 *.nar
@@ -19,13 +19,17 @@
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# Log file
+*.log
+
+# virtual machine crash logs
 hs_err_pid*
 replay_pid*
 
 # Operating System Files
 .DS_Store
 .DS_Store?
+**/.DS_Store
 ._*
 .Spotlight-V100
 .Trashes
@@ -33,6 +37,11 @@ ehthumbs.db
 ehthumbs_vista.db
 Thumbs.db
 
-# Maven / Build Output
-target/
-build/
+# Serialized Machine Learning Models
+*.ser
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/

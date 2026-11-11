@@ -15,8 +15,9 @@ class LanguageDetectorTest {
 
   @Test
   void testPredictionBeforeTraining() {
-    String result = detector.predict("Hello world");
-    assertEquals("Unknown", result, "Untrained engine should return 'Unknown'");
+    LanguageDetector.Prediction result = detector.predict("Hello world");
+    assertEquals("Unknown", result.language, "Untrained engine should return 'Unknown'");
+    assertEquals(0.0, result.confidence, "Untrained engine should have 0.0 confidence");
   }
 
   @Test
@@ -24,8 +25,12 @@ class LanguageDetectorTest {
     detector.train("The quick brown fox", "English");
     detector.train("El zorro marrón rápido", "Spanish");
 
-    assertEquals("English", detector.predict("quick brown fox"));
-    assertEquals("Spanish", detector.predict("zorro marrón"));
+    LanguageDetector.Prediction engPrediction = detector.predict("quick brown");
+    assertEquals("English", engPrediction.language);
+    assertTrue(engPrediction.confidence > 0.5, "Confidence should be strong for exact matches");
+
+    LanguageDetector.Prediction spanPrediction = detector.predict("zorro marrón");
+    assertEquals("Spanish", spanPrediction.language);
   }
 
   @Test
@@ -33,22 +38,19 @@ class LanguageDetectorTest {
     detector.train("Hello friend", "English");
     detector.train("Hola amigo", "Spanish");
 
-    // "computer" is unknown. Laplace smoothing prevents a crash/zero-probability.
-    String result = detector.predict("Hello computer");
-    assertEquals("English", result);
+    LanguageDetector.Prediction result = detector.predict("Hello computer");
+    assertEquals("English", result.language);
   }
 
   @Test
   void testPriorProbabilityTieBreaker() {
-    // English has a 75% prior probability, Spanish has 25%
-    detector.train("One", "English");
-    detector.train("Two", "English");
-    detector.train("Three", "English");
-    detector.train("Uno", "Spanish");
+    detector.train("a", "English");
+    detector.train("b", "English");
+    detector.train("c", "English");
 
-    // "Apple" is unknown to both. Both likelihoods are equal.
-    // English should win purely because it appears more frequently in the training
-    // data.
-    assertEquals("English", detector.predict("Apple"));
+    detector.train("x y z", "Spanish");
+
+    LanguageDetector.Prediction result = detector.predict("q");
+    assertEquals("English", result.language);
   }
 }

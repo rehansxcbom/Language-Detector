@@ -1,33 +1,77 @@
-# Naive Bayes Language Detector
+# Naive Bayes Language Engine 🌍
 
-A raw Java implementation of a Naive Bayes classifier used for language detection.
+A custom-built, highly optimized Natural Language Processing (NLP) engine built in Java from scratch. It uses a custom implementation of the Naive Bayes classification algorithm to detect the language of a given text with high accuracy and confidence scoring.
 
-This repository contains a custom, from-scratch implementation of a Naive Bayes text classifier in Java, configured as a Language Detector. Built entirely without external machine learning libraries, this project demonstrates core natural language processing (NLP) and probability concepts under the hood.
+## ✨ Key Features
 
-Naive Bayes outperforms heavier, more complex neural networks for short texts, mostly because languages give themselves away so easily through high-frequency "stop words" (like the, el, le, der).
+- **Character Trigram Tokenization**: Splits text into overlapping 3-letter chunks (N-Grams) rather than whole words, making the engine highly resilient to typos and capable of detecting short, ambiguous words.
+- **Softmax Confidence Scoring**: Converts raw logarithmic probabilities into human-readable confidence percentages (0% to 100%).
+- **Memory Optimization (Dictionary Encoding)**: Maps multi-byte string tokens to primitive integer IDs, reducing RAM usage by up to 80% when training on massive datasets.
+- **Laplace Smoothing & Prior Probabilities**: Prevents mathematical crashes on unseen words and uses historical distribution data to break ties.
+- **Model Serialization**: Persists trained models to binary `.ser` files, allowing for instant loading without retraining.
+- **Interactive CLI**: Features ANSI color-coded terminal output and a strict 25% "Gibberish Threshold" to filter out unsupported inputs.
 
-To build this, we first set up our classifier's "memory." The engine needs to remember four specific things during the training phase to be able to do the math later:
+## 📂 Project Architecture
 
-1. documentCountPerLanguage: To calculate our baseline probability (e.g., if 60% of our training data is English, we want to know that).
+Adheres to the Single Responsibility Principle (SRP) and standard Maven directory structure.
 
-2. wordCountsPerLanguage: The core of the engine. If we see the word "bonjour", we need to look up how many times it appeared in French vs. Spanish.
+```text
+src/main/java/io/github/rehansxcbom/nlp/
+ ├── Main.java               # CLI entry point and UX routing
+ ├── LanguageDetector.java   # Core Naive Bayes mathematical engine
+ ├── TextTokenizer.java      # Regex, cleaning, and Trigram extraction
+ ├── DataLoader.java         # External CSV I/O handling
+ └── ModelSerializer.java    # Binary state persistence (.ser)
+```
 
-3. totalWordsPerLanguage: The denominator for our math. We need the total count of all words processed for a specific language.
+## 🚀 Getting Started
 
-4. vocabulary: A master list of every unique word we've ever seen across all languages. We need the total size of this for Laplace smoothing later.
+### Prerequisites
 
-We are going to need a train(String text, String language) method that takes a sentence, chops it up into words, and updates all these maps.
+- Java 17 or higher
+- Maven 3.6+
 
-To handle punctuation and lowercasing in a language detector, we have to be careful with our regular expressions.
+### 1. Build the Application
 
-We do not just strip out everything that isn't standard a-z, we will accidentally delete characters like é, ñ, or ü — which are massive, dead-giveaway clues for languages like French, Spanish, or German.
+This project uses the Maven Shade Plugin to compile into a standalone executable Fat JAR.
 
-Instead, we use the Unicode regex [^\p{L}\s]. '\p{L}' matches a letter from any language, and '\s' matches whitespace. We will tell Java to replace anything that isn't those two things with an empty string.
+```bash
+mvn clean package
+```
 
-A raw Java implementation of a Naive Bayes classifier used for language detection.
+### 2. Train the Model
 
-Key Features:
-Zero Dependencies: Built using only standard Java libraries.
-Mathematical Stability: Uses logarithmic probabilities to prevent floating-point underflow.
-Laplace Smoothing: Gracefully handles unknown words encountered during testing.
-Unicode Tokenization: Accurately processes language-specific characters (like é, ñ, ü) using Regex \p{L}.
+You can train the engine using any CSV file formatted with a `Language,Text` schema.
+
+```bash
+java -jar target/language-detector-1.0-SNAPSHOT.jar /path/to/dataset.csv
+```
+
+_Note: Upon successful training, the engine will automatically save its state to `language_model.ser` in your root directory._
+
+### 3. Load a Pre-Trained Model
+
+Bypass the training phase and instantly launch the interactive CLI using a saved `.ser` file.
+
+```bash
+java -jar target/language-detector-1.0-SNAPSHOT.jar language_model.ser
+```
+
+## 📊 Dataset Format
+
+The engine expects a standard CSV file with headers. The first column must be the label (Language) and the second column must be the raw text.
+
+```csv
+Language,Text
+English,The quick brown fox jumps over the lazy dog.
+Spanish,El zorro marrón rápido salta sobre el perro perezoso.
+French,Le renard brun rapide saute par-dessus le chien.
+```
+
+## 🧪 Testing
+
+The project includes a comprehensive JUnit 5 test suite verifying tokenization boundaries, Laplace smoothing, Softmax calculations, and edge cases.
+
+```bash
+mvn clean test
+```

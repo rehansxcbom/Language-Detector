@@ -1,70 +1,115 @@
 package io.github.rehansxcbom.nlp;
 
+import java.io.Serializable;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
-public class LanguageDetector {
+public class LanguageDetector implements Serializable {
+
+  private static final long serialVersionUID = 3L;
+
+  private final double alpha;
 
   private Map<String, Integer> documentCountPerLanguage = new HashMap<>();
-  private Map<String, Map<String, Integer>> wordCountsPerLanguage = new HashMap<>();
-  private Map<String, Integer> totalWordsPerLanguage = new HashMap<>();
-  private Set<String> vocabulary = new HashSet<>();
+  private Map<String, Integer> totalNGramsPerLanguage = new HashMap<>();
   private int totalDocuments = 0;
+
+  private int nextGramId = 0;
+  private Map<String, Integer> dictionary = new HashMap<>();
+
+  private Map<String, Map<Integer, Integer>> nGramCountsPerLanguage = new HashMap<>();
+
+  public LanguageDetector() {
+    this(1.0);
+  }
+
+  public LanguageDetector(double alpha) {
+    this.alpha = alpha;
+  }
+
+  public static class Prediction {
+    public final String language;
+    public final double confidence;
+
+    public Prediction(String language, double confidence) {
+      this.language = language;
+      this.confidence = confidence;
+    }
+  }
 
   public void train(String text, String language) {
     totalDocuments++;
     documentCountPerLanguage.put(language, documentCountPerLanguage.getOrDefault(language, 0) + 1);
+    nGramCountsPerLanguage.putIfAbsent(language, new HashMap<>());
 
-    wordCountsPerLanguage.putIfAbsent(language, new HashMap<>());
-    Map<String, Integer> currentLangWordCounts = wordCountsPerLanguage.get(language);
+    Map<Integer, Integer> currentLangCounts = nGramCountsPerLanguage.get(language);
+    String[] nGrams = TextTokenizer.tokenize(text);
 
-    // Uses our new static utility class
-    String[] words = TextTokenizer.tokenize(text);
+    for (String gram : nGrams) {
+      Integer gramId = dictionary.get(gram);
+      if (gramId == null) {
+        gramId = nextGramId++;
+        dictionary.put(gram, gramId);
+      }
 
-    for (String word : words) {
-      if (word.isEmpty())
-        continue;
-
-      vocabulary.add(word);
-      currentLangWordCounts.put(word, currentLangWordCounts.getOrDefault(word, 0) + 1);
-      totalWordsPerLanguage.put(language, totalWordsPerLanguage.getOrDefault(language, 0) + 1);
+      currentLangCounts.put(gramId, currentLangCounts.getOrDefault(gramId, 0) + 1);
+      totalNGramsPerLanguage.put(language, totalNGramsPerLanguage.getOrDefault(language, 0) + 1);
     }
   }
 
-  public String predict(String text) {
-    String bestLanguage = "Unknown";
-    double highestLogProb = Double.NEGATIVE_INFINITY;
+  public Prediction predict(String text) {
+    if (documentCountPerLanguage.isEmpty()) {
+      return new Prediction("Unknown", 0.0);
+    }
 
-    String[] words = TextTokenizer.tokenize(text);
-    int vocabSize = vocabulary.size();
+    String[] nGrams = TextTokenizer.tokenize(text);
+    int vocabSize = dictionary.size();
+
+    Map<String, Double> languageScores = new HashMap<>();
+    double maxLogScore = Double.NEGATIVE_INFINITY;
 
     for (String language : documentCountPerLanguage.keySet()) {
-      double priorProb = (double) documentCountPerLanguage.get(language) / totalDocuments;
-      double logPrior = Math.log(priorProb);
-
+      double logPrior = Math.log((double) documentCountPerLanguage.get(language) / totalDocuments);
       double logLikelihood = 0.0;
-      Map<String, Integer> currentLangWordCounts = wordCountsPerLanguage.get(language);
-      int totalWordsInThisLang = totalWordsPerLanguage.getOrDefault(language, 0);
 
-      for (String word : words) {
-        if (word.isEmpty())
-          continue;
+      Map<Integer, Integer> counts = nGramCountsPerLanguage.get(language);
+      int totalGramCount = totalNGramsPerLanguage.getOrDefault(language, 0);
 
-        int wordCount = currentLangWordCounts.getOrDefault(word, 0);
-        double wordProb = (double) (wordCount + 1) / (totalWordsInThisLang + vocabSize);
-        logLikelihood += Math.log(wordProb);
+      for (String gram : nGrams) {
+        Integer gramId = dictionary.get(gram);
+        int count = 0;
+        if (gramId != null) {
+          count = counts.getOrDefault(gramId, 0);
+        }
+
+        double prob = (count + alpha) / (totalGramCount + (alpha * vocabSize));
+        logLikelihood += Math.log(prob);
       }
 
       double totalScore = logPrior + logLikelihood;
+      languageScores.put(language, totalScore);
 
-      if (totalScore > highestLogProb) {
-        highestLogProb = totalScore;
-        bestLanguage = language;
+      if (totalScore > maxLogScore) {
+        maxLogScore = totalScore;
       }
     }
 
-    return bestLanguage;
+    double sumExp = 0.0;
+    for (Map.Entry<String, Double> entry : languageScores.entrySet()) {
+      sumExp += Math.exp(entry.getValue() - maxLogScore);
+    }
+
+    String bestLanguage = "Unknown";
+    double highestConfidence = 0.0;
+
+    for (Map.Entry<String, Double> entry : languageScores.entrySet()) {
+      double confidence = Math.exp(entry.getValue() - maxLogScore) / sumExp;
+      if (confidence > highestConfidence) {
+        highestConfidence = confidence;
+        bestLanguage = entry.getKey();
+      }
+    }
+
+    return new Prediction(bestLanguage, highestConfidence);
   }
 }
